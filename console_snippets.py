@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Console Snippets",
     "author": "todashuta",
-    "version": (0, 0, 1),
+    "version": (0, 0, 2),
     "blender": (3, 6, 0),
     "location": "Console Context Menu",
     "description": "",
@@ -29,6 +29,8 @@ class ConsoleSnippetsAddExample(bpy.types.Operator):
     def execute(self, context):
         text = bpy.data.texts.new(TEXT_NAME)
         text.write('''\
+# #で始まる行、空行、空白だけの行は無視されます
+
 image size list | for i in D.images: i.size[:],i.name
 for active objects | for ob in C.selected_objects: C.view_layer.objects.active = ob; print(C.active_object)
 clear custom split normals|for ob in C.selected_objects: C.view_layer.objects.active = ob; bpy.ops.mesh.customdata_custom_splitnormals_clear(),ob.name
@@ -41,6 +43,10 @@ class ConsoleSnippetsInsertText(bpy.types.Operator):
     bl_label = "Console Snippets Insert Text"
 
     text: bpy.props.StringProperty(name="Text", default="")
+
+    @classmethod
+    def description(cls, context, properties):
+        return f"code: `{properties.text}`"
 
     @classmethod
     def poll(cls, context):
@@ -62,6 +68,8 @@ def draw_func(self, context):
         s = l.body.strip()
         if s == '':
             continue
+        if s.startswith('#'):
+            continue
         items = [i.strip() for i in s.split('|', 1)]
         if len(items) != 2:
             continue
@@ -69,16 +77,24 @@ def draw_func(self, context):
         op.text = items[1]
 
 
+classes = (
+        ConsoleSnippetsInsertText,
+        ConsoleSnippetsAddExample,
+)
+
+
 def register():
-    bpy.utils.register_class(ConsoleSnippetsInsertText)
-    bpy.utils.register_class(ConsoleSnippetsAddExample)
+    for cls in classes:
+        bpy.utils.register_class(cls)
+
     bpy.types.CONSOLE_MT_context_menu.append(draw_func)
 
 
 def unregister():
     bpy.types.CONSOLE_MT_context_menu.remove(draw_func)
-    bpy.utils.unregister_class(ConsoleSnippetsAddExample)
-    bpy.utils.unregister_class(ConsoleSnippetsInsertText)
+
+    for cls in reversed(classes):
+        bpy.utils.unregister_class(cls)
 
 
 if __name__ == '__main__':
